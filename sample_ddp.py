@@ -111,7 +111,7 @@ def main(args):
         samples = vae.decode(samples / 0.18215).sample
         samples = torch.clamp(127.5 * samples + 128.0, 0, 255)
         samples = samples.to(torch.uint8)
-
+        print(samples.shape)
         fid_metric.update(samples, real=False)
         
         
@@ -120,12 +120,11 @@ def main(args):
 
     if rank == 0:
       real_tf = transforms.Compose([
-            transforms.ToTensor(),  # → float32 [0,1]
+            transforms.ConvertImageDtype(torch.uint8),
         ])
       def preprocess(example):
-        img = real_tf(example["image"].convert("RGB"))  # tensor float32 [C,H,W]
-        img_uint8 = (img * 255.0).round().to(torch.uint8)  # still tensor
-        return {"image_uint8": img_uint8}
+        img = real_tf(example["image"].convert("RGB"))
+        return {"image_uint8": img}
       real_ds = load_dataset(
         args.data_path,
         split=f"validation[:{args.num_fid_samples}]"
