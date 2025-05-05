@@ -120,6 +120,7 @@ def main(args):
 
     if rank == 0:
       real_tf = transforms.Compose([
+            transforms.ToTensor(),
             transforms.ConvertImageDtype(torch.uint8),
         ])
       def preprocess(example):
