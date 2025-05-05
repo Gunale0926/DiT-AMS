@@ -141,7 +141,9 @@ def main(args):
             real = real.to(device)
             batch_size = real.shape[0]
             fake = gen_tensor[idx:idx + batch_size].to(device)
-            fid_metric.update(fake, real)
+            fake_uint8 = (fake * 255.0).round().to(torch.uint8)
+            real_uint8 = (real * 255.0).round().to(torch.uint8)
+            fid_metric.update(fake_uint8, real_uint8)
             idx += batch_size
             if idx >= args.num_fid_samples:
                 break
