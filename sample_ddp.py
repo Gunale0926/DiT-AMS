@@ -119,31 +119,21 @@ def main(args):
     dist.barrier()
 
     if rank == 0:
-        real_tf = transforms.Compose([
-            transforms.Lambda(lambda img: center_crop_arr(img, args.image_size)),
+      real_tf = transforms.Compose([
             transforms.ToTensor(),  # → float32 [0,1]
         ])
-        real_ds = load_dataset(
-            args.data_path,
-            split=f"validation[:{args.num_fid_samples}]"
-        ).map(
-            lambda ex: {
-                "image_uint8": (
-                    real_tf(ex["image"].convert("RGB"))  # float [0,1]
-                    .mul(255.0)
-                    .round()
-                    .to(torch.uint8)
-                )
-            },
-            batched=False,
-            remove_columns=list(load_dataset(args.data_path, split="validation").features.keys())
-        )
-        real_ds.set_format(type="torch", columns=["image_uint8"])
-        imgs = real_ds["image_uint8"]
-        if isinstance(imgs, list):
-            imgs = torch.stack(imgs, dim=0)
-        imgs = imgs.to(device)
-        fid_metric.update(imgs, real=True)
+      def preprocess(example):
+        img = real_tf(example["image"].convert("RGB"))  # tensor float32 [C,H,W]
+        img_uint8 = (img * 255.0).round().to(torch.uint8)  # still tensor
+        return {"image_uint8": img_uint8}
+      real_ds = load_dataset(
+        args.data_path,
+        split=f"validation[:{args.num_fid_samples}]"
+      ).map(preprocess)
+      imgs = torch.tensor(real_ds["image_uint8"], dtype=torch.uint8)
+      imgs = imgs.to(device)
+      print(imgs.shape)
+      fid_metric.update(imgs, real=True)
 
     fid_value = fid_metric.compute()
     print(f"FID-{args.num_fid_samples}: {fid_value:.4f}")
