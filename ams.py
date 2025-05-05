@@ -133,9 +133,16 @@ class AMS(Optimizer):
                     # Grams
                     grad.sign_().mul_(exp_avg.abs())
                     p.addcdiv_(grad, denom, value=-step_size)
-                elif beta3 == 0 and scaling != -1:
+                elif beta3 == 0 and scaling == 0:
+                    # C-Adam
+                    phi = (exp_avg * grad > 0).to(grad.dtype)
+                    total_mask = phi * (
+                        phi.numel() / (phi.sum() + 1)
+                    )
+                    p.addcdiv_(exp_avg * total_mask, denom, value=-step_size)
+                elif beta3 == 0:
                     # Gradient AMS (GAMS)
-                    phi = (exp_avg.sign() * grad.sign() > 0).to(grad.dtype)
+                    phi = (exp_avg * grad > 0).to(grad.dtype)
                     psi = ((1 - phi) * scaling).to(grad.dtype)
                     total_mask = (phi + psi) * (
                         phi.numel() / (phi.sum() + psi.sum().abs() + 1)
@@ -143,7 +150,7 @@ class AMS(Optimizer):
                     p.addcdiv_(exp_avg * total_mask, denom, value=-step_size)
                 else:
                     # AMS
-                    phi = (exp_avg.sign() * exp_sign.sign() > 0).to(grad.dtype)
+                    phi = (exp_avg * exp_sign > 0).to(grad.dtype)
                     psi = ((1 - phi) * scaling).to(grad.dtype)
                     total_mask = (phi + psi) * (
                         phi.numel() / (phi.sum() + psi.sum().abs() + 1)
