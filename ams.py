@@ -131,7 +131,7 @@ class AMS(Optimizer):
                     phi = (exp_avg.sign() * exp_sign.sign() > 0).to(grad.dtype)
                     psi = ((1 - phi) * scaling).to(grad.dtype)
                     total_mask = (phi + psi) * (
-                        phi.numel() / (phi.sum() + psi.sum().abs())
+                        phi.numel() / (phi.sum() + psi.sum().abs() + 1)
                     )
                     p.addcdiv_(exp_avg * total_mask, denom, value=-step_size)
                 elif beta3 == beta1 or scaling == 1:
@@ -148,7 +148,7 @@ class AMS(Optimizer):
                         phi = (exp_avg.sign() * grad.sign() > 0).to(grad.dtype)
                         psi = ((1 - phi) * scaling).to(grad.dtype)
                         total_mask = (phi + psi) * (
-                            phi.numel() / (phi.sum() + psi.sum().abs())
+                            phi.numel() / (phi.sum() + psi.sum().abs() + 1)
                         )
                         p.addcdiv_(exp_avg * total_mask, denom, value=-step_size)
 
