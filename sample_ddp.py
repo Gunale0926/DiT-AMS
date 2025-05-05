@@ -119,24 +119,35 @@ def main(args):
     dist.barrier()
 
     if rank == 0:
-        # load validation set
-        transform = transforms.Compose([
-            transforms.ToTensor(),
+        real_tf = transforms.Compose([
+            transforms.Lambda(lambda img: center_crop_arr(img, args.image_size)),
+            transforms.ToTensor(),  # → float32 [0,1]
         ])
-        def preprocess_image(example):
-            example["image"] = [transform(img.convert("RGB")) for img in example["image"]]
-            return example
-        val_ds = load_dataset(args.data_path, split="validation[:" + str(args.num_fid_samples) + "]").with_transform(preprocess_image)
-        val_loader = DataLoader(val_ds["image"], batch_size=args.per_proc_batch_size)
-        # update metric in batches
-        for batch in val_loader:
-            real = batch["image"]               # float32 [0,1]
-            real_uint8 = (real * 255.0).round().to(torch.uint8)  # now uint8 [0,255]
-            fid_metric.update(real_uint8, real=True)
-            
-        fid_value = fid_metric.compute()
-        print(f"FID-{args.num_fid_samples}: {fid_value:.4f}")
+        real_ds = load_dataset(
+            args.data_path,
+            split=f"validation[:{args.num_fid_samples}]"
+        ).map(
+            lambda ex: {
+                "image_uint8": (
+                    real_tf(ex["image"].convert("RGB"))  # float [0,1]
+                    .mul(255.0)
+                    .round()
+                    .to(torch.uint8)
+                )
+            },
+            batched=False,
+            remove_columns=list(load_dataset(args.data_path, split="validation").features.keys())
+        )
+        real_ds.set_format(type="torch", columns=["image_uint8"])
+        imgs = real_ds["image_uint8"]
+        if isinstance(imgs, list):
+            imgs = torch.stack(imgs, dim=0)
+        imgs = imgs.to(device)
+        fid_metric.update(imgs, real=True)
 
+    fid_value = fid_metric.compute()
+    print(f"FID-{args.num_fid_samples}: {fid_value:.4f}")
+    
     dist.destroy_process_group()
 
 
