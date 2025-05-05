@@ -121,7 +121,7 @@ def main(args):
         # Evaluate FID using torchmetrics
         fid_metric = FrechetInceptionDistance().to(device)
         # load validation set
-        val_ds = load_dataset(args.data_path, split="validation")
+        val_ds = load_dataset(args.data_path, split="validation[:" + str(args.num_sampling_steps) + "]")
         val_ds = val_ds.map(lambda ex: preprocess_image(ex, args.image_size),
                              remove_columns=[c for c in val_ds.column_names if c != "image"] )
         val_loader = DataLoader(val_ds["image"], batch_size=args.per_proc_batch_size)
@@ -151,6 +151,7 @@ def main(args):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument("--data-path", type=str)
     parser.add_argument("--model", type=str, choices=list(DiT_models.keys()), default="DiT-XL/2")
     parser.add_argument("--vae", type=str, choices=["ema", "mse"], default="ema")
     parser.add_argument("--sample-dir", type=str, default="samples")
