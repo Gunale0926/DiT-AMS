@@ -126,7 +126,10 @@ class AMS(Optimizer):
                         step_size * math.sqrt(bias_correction2) / bias_correction1
                     )
 
-                if beta3 > 0 and beta3 != beta1:
+                if beta3 == beta1 or scaling == 1:
+                    # Adam
+                    p.addcdiv_(exp_avg, denom, value=-step_size)
+                elif beta3 > 0 and beta3 != beta1:
                     # General version AMS
                     phi = (exp_avg.sign() * exp_sign.sign() > 0).to(grad.dtype)
                     psi = ((1 - phi) * scaling).to(grad.dtype)
@@ -134,22 +137,17 @@ class AMS(Optimizer):
                         phi.numel() / (phi.sum() + psi.sum().abs() + 1)
                     )
                     p.addcdiv_(exp_avg * total_mask, denom, value=-step_size)
-                elif beta3 == beta1 or scaling == 1:
-                    # Adam
-                    p.addcdiv_(exp_avg, denom, value=-step_size)
+                elif scaling == -1:
+                    # Grams
+                    grad.sign_().mul_(exp_avg.abs())
+                    p.addcdiv_(grad, denom, value=-step_size)
                 else:
-                    # beta3 == 0
-                    if scaling == -1:
-                        # Grams
-                        grad.sign_().mul_(exp_avg.abs())
-                        p.addcdiv_(grad, denom, value=-step_size)
-                    else:
-                        # General version AMS w.o. exp_sign
-                        phi = (exp_avg.sign() * grad.sign() > 0).to(grad.dtype)
-                        psi = ((1 - phi) * scaling).to(grad.dtype)
-                        total_mask = (phi + psi) * (
-                            phi.numel() / (phi.sum() + psi.sum().abs() + 1)
-                        )
-                        p.addcdiv_(exp_avg * total_mask, denom, value=-step_size)
+                    # General version AMS w.o. exp_sign
+                    phi = (exp_avg.sign() * grad.sign() > 0).to(grad.dtype)
+                    psi = ((1 - phi) * scaling).to(grad.dtype)
+                    total_mask = (phi + psi) * (
+                        phi.numel() / (phi.sum() + psi.sum().abs() + 1)
+                    )
+                    p.addcdiv_(exp_avg * total_mask, denom, value=-step_size)
 
         return loss
