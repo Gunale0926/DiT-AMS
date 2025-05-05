@@ -32,6 +32,8 @@ from models import DiT_models
 from diffusion import create_diffusion
 from diffusers.models import AutoencoderKL
 
+from ams import AMS
+
 
 #################################################################################
 #                             Training Helper Functions                         #
@@ -153,7 +155,13 @@ def main(args):
     logger.info(f"DiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     # Setup optimizer (we used default Adam betas=(0.9, 0.999) and a constant learning rate of 1e-4 in our paper):
-    opt = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=0)
+    opt = AMS(
+            model.parameters(),
+            lr=1e-4,
+            weight_decay=0,
+            betas=(0.9, 0.999, 0),
+            scaling=args.ams_scaling,
+        )
 
     # Setup data:
     transform = transforms.Compose([
@@ -248,7 +256,6 @@ def main(args):
                 dist.barrier()
 
     model.eval()  # important! This disables randomized embedding dropout
-    # do any sampling/FID calculation/etc. with ema (or model) in eval mode ...
 
     logger.info("Done!")
     cleanup()
@@ -269,5 +276,6 @@ if __name__ == "__main__":
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--log-every", type=int, default=100)
     parser.add_argument("--ckpt-every", type=int, default=50_000)
+    parser.add_arguments("--ams-scaling", type=float, default=0)
     args = parser.parse_args()
     main(args)
