@@ -133,21 +133,15 @@ def main(args):
         # load generated samples
         gen_arr = np.stack([np.asarray(Image.open(f"{sample_folder}/{i:06d}.png"))
                              for i in range(args.num_fid_samples)])
-        gen_tensor = torch.from_numpy(gen_arr).permute(0, 3, 1, 2).float() / 255.0
+        gen_tensor = torch.from_numpy(gen_arr).permute(0, 3, 1, 2).to(torch.uint8)
+        fid_metric.update(gen_tensor, real=False)
 
         # update metric in batches
-        idx = 0
-        for real in val_loader:
-            real = real.to(device)
-            batch_size = real.shape[0]
-            fake = gen_tensor[idx:idx + batch_size].to(device)
-            fake_uint8 = (fake * 255.0).round().to(torch.uint8)
-            real_uint8 = (real * 255.0).round().to(torch.uint8)
-            fid_metric.update(fake_uint8, real_uint8)
-            idx += batch_size
-            if idx >= args.num_fid_samples:
-                break
-
+        for batch in val_loader:
+            real = batch["image"]               # float32 [0,1]
+            real_uint8 = (real * 255.0).round().to(torch.uint8)  # now uint8 [0,255]
+            fid_metric.update(real_uint8, real=True)
+            
         fid_value = fid_metric.compute()
         print(f"FID-{args.num_fid_samples}: {fid_value:.4f}")
 
