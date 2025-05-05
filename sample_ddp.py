@@ -88,6 +88,9 @@ def main(args):
     samples_per_gpu = total_samples // world
     iterations = samples_per_gpu // per_gpu
 
+    # Evaluate FID using torchmetrics
+    fid_metric = FrechetInceptionDistance().to(device)
+    
     for _ in range(iterations):
         z = torch.randn(per_gpu, model.in_channels, latent_size, latent_size, device=device)
         y = torch.randint(0, args.num_classes, (per_gpu,), device=device)
@@ -107,19 +110,15 @@ def main(args):
 
         samples = vae.decode(samples / 0.18215).sample
         samples = torch.clamp(127.5 * samples + 128.0, 0, 255)
-        samples = samples.permute(0, 2, 3, 1).to("cpu", dtype=torch.uint8).numpy()
+        samples = samples.to(torch.uint8)
 
-        # save images
-        for i, img in enumerate(samples):
-            idx = total + i * world + rank
-            Image.fromarray(img).save(f"{sample_folder}/{idx:06d}.png")
-        total += per_gpu * world
+        fid_metric.update(samples, real=False)
+        
+        
 
     dist.barrier()
 
     if rank == 0:
-        # Evaluate FID using torchmetrics
-        fid_metric = FrechetInceptionDistance().to(device)
         # load validation set
         transform = transforms.Compose([
             transforms.ToTensor(),
@@ -129,13 +128,6 @@ def main(args):
             return example
         val_ds = load_dataset(args.data_path, split="validation[:" + str(args.num_fid_samples) + "]").with_transform(preprocess_image)
         val_loader = DataLoader(val_ds["image"], batch_size=args.per_proc_batch_size)
-
-        # load generated samples
-        gen_arr = np.stack([np.asarray(Image.open(f"{sample_folder}/{i:06d}.png"))
-                             for i in range(args.num_fid_samples)])
-        gen_tensor = torch.from_numpy(gen_arr).permute(0, 3, 1, 2).to(torch.uint8)
-        fid_metric.update(gen_tensor, real=False)
-
         # update metric in batches
         for batch in val_loader:
             real = batch["image"]               # float32 [0,1]
