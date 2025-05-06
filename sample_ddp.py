@@ -120,7 +120,7 @@ def main(args):
       real_ds = load_dataset(
         args.data_path,
         split=f"validation[:{args.num_fid_samples}]"
-      ).map(preprocess)
+      ).shuffle().map(preprocess)
       imgs = torch.tensor(real_ds["image_uint8"], dtype=torch.uint8)
       imgs = imgs.to(device)
       print(imgs.shape)
