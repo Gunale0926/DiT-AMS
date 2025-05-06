@@ -37,16 +37,6 @@ def center_crop_arr(pil_image, image_size):
     return Image.fromarray(arr[crop_y: crop_y + image_size, crop_x: crop_x + image_size])
 
 
-def preprocess_image(example, image_size):
-    # single image transform for FID: [0,1] range
-    transform = transforms.Compose([
-        transforms.Lambda(lambda img: center_crop_arr(img, image_size)),
-        transforms.ToTensor(),  # scales to [0,1]
-    ])
-    example["image"] = transform(example["image"].convert("RGB"))
-    return example
-
-
 def main(args):
     torch.backends.cuda.matmul.allow_tf32 = args.tf32
     assert torch.cuda.is_available(), "Requires at least one GPU"
@@ -120,6 +110,7 @@ def main(args):
 
     if rank == 0:
       real_tf = transforms.Compose([
+            transforms.Lambda(lambda img: center_crop_arr(img, args.image_size)),
             transforms.ToTensor(),
             transforms.ConvertImageDtype(torch.uint8),
         ])
