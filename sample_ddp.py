@@ -141,7 +141,7 @@ if __name__ == "__main__":
     parser.add_argument("--sample-dir", type=str, default="samples")
     parser.add_argument("--per-proc-batch-size", type=int, default=32)
     parser.add_argument("--num-fid-samples", type=int, default=50_000)
-    parser.add_argument("--image-size", type=int, choices=[64, 128, 256, 512], default=256)
+    parser.add_argument("--image-size", type=int, choices=[32, 64, 128, 256, 512], default=256)
     parser.add_argument("--num-classes", type=int, default=1000)
     parser.add_argument("--cfg-scale", type=float, default=1.5)
     parser.add_argument("--num-sampling-steps", type=int, default=250)
