@@ -161,9 +161,9 @@ def main(args):
     # Setup optimizer:
     opt = AMS(
         model.parameters(),
-        lr=4e-4,
+        lr=1e-4,
         weight_decay=0,
-        betas=(0.9, 0.99, 0),
+        betas=(0.9, 0.999, 0),
         scaling=args.ams_scaling,
     )
 
