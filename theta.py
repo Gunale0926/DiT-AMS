@@ -109,7 +109,7 @@ class ThetaOptim(Optimizer):
                         step_size * math.sqrt(bias_correction2) / bias_correction1
                     )
 
-                theta = (grad + exp_avg) / (grad.norm() + exp_avg.norm() + group["eps"])
+                theta = (grad + exp_avg) / (grad.norm() * exp_avg.norm() + group["eps"])
 
                 p.addcdiv_(exp_avg * theta, denom, value=-step_size)
 
