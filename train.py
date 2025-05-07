@@ -34,6 +34,7 @@ from models import DiT_models
 from diffusion import create_diffusion
 from diffusers.models import AutoencoderKL
 from ams import AMS
+from theta import ThetaOptim
 
 
 #################################################################################
@@ -159,12 +160,18 @@ def main(args):
     logger.info(f"DiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     # Setup optimizer:
-    opt = AMS(
+    # opt = AMS(
+    #     model.parameters(),
+    #     lr=1e-4,
+    #     weight_decay=0,
+    #     betas=(0.9, 0.999, 0),
+    #     scaling=args.ams_scaling,
+    # )
+    opt = ThetaOptim(
         model.parameters(),
         lr=1e-4,
         weight_decay=0,
-        betas=(0.9, 0.999, 0),
-        scaling=args.ams_scaling,
+        betas=(0.9, 0.999)
     )
 
     # Setup data:
