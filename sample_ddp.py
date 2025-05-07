@@ -119,7 +119,7 @@ def main(args):
         return {"image_uint8": img}
       real_ds = load_dataset(
         args.data_path,
-        split=f"validation[:{args.num_fid_samples}]"
+        split=f"test[:{args.num_fid_samples}]"
       ).shuffle().map(preprocess)
       imgs = torch.tensor(real_ds["image_uint8"], dtype=torch.uint8)
       imgs = imgs.to(device)
